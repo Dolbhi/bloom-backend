@@ -1,0 +1,51 @@
+# Local development only. Render does not use this file.
+#
+#   cp .env.example .env        (first time only)
+#   docker compose up --build   (API on http://localhost:8000, docs on /api/docs/)
+#
+# Migrations run automatically when the api container starts.
+services:
+  # Stand-in for Supabase: same Postgres major version (17) + PostGIS
+  db:
+    image: postgis/postgis:17-3.5
+    # Apple Silicon Mac and the image won't pull? Uncomment the next line.
+    # platform: linux/amd64
+    environment:
+      POSTGRES_DB: bloom
+      POSTGRES_USER: bloom
+      POSTGRES_PASSWORD: bloom
+    ports:
+      # host 5433 -> container 5432, so it doesn't clash with a Postgres already on your machine
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data   # data survives "docker compose down" (use "down -v" to wipe)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bloom -d bloom"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Django API, built from the same Dockerfile Render uses
+  api:
+    build: .
+    command: sh scripts/dev.sh        # migrate, then runserver (auto-reloads when you save a file)
+    env_file: .env
+    # Run as your own user so files the container creates (migrations, uploaded photos) belong to you.
+    # Linux/WSL: set LOCAL_UID / LOCAL_GID in .env to the output of `id -u` / `id -g`.
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    environment:
+      # "db" is the service name above; Docker's network turns it into the container's address
+      DATABASE_URL: postgres://bloom:bloom@db:5432/bloom
+      DATABASE_SSL: "False"
+      PHOTO_STORAGE: ${PHOTO_STORAGE:-local}
+      HOME: /tmp
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app   # your code is mounted live, so edits show without rebuilding
+    depends_on:
+      db:
+        condition: service_healthy   # wait until Postgres accepts connections
+
+volumes:
+  pgdata:
