@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.contrib import admin
 from django.db import connection
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.urls import include, path, re_path
 from django.views.static import serve
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
@@ -26,6 +26,14 @@ def db_check(request):
     return JsonResponse({"postgres": pg, "postgis": postgis})
 
 
+def local_media(request, path):
+    """Dev only: serve uploaded photos when PHOTO_STORAGE=local. In production photos come from the bucket.
+    Settings are read per request (not at import) so the folder can change, e.g. in tests."""
+    if settings.PHOTO_STORAGE != "local":
+        raise Http404
+    return serve(request, path, document_root=settings.MEDIA_ROOT)
+
+
 # API paths have NO trailing slash; core.middleware.ApiTrailingSlashMiddleware also accepts one.
 api_v1 = [
     path("auth/", include("users.urls_auth")),
@@ -46,8 +54,5 @@ urlpatterns = [
     path("api/v1/", include(api_v1)),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="docs"),
+    re_path(r"^media/(?P<path>.*)$", local_media),
 ]
-
-if settings.PHOTO_STORAGE == "local":
-    # Dev only: serve uploaded photos from MEDIA_ROOT. In production photos come from the bucket.
-    urlpatterns += [re_path(r"^media/(?P<path>.*)$", serve, {"document_root": settings.MEDIA_ROOT})]

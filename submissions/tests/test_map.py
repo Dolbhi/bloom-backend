@@ -1,8 +1,10 @@
 from datetime import timedelta
 
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
+from core.storage import get_storage
 from core.tests.factories import make_plant, make_submission
 
 # A box around Melbourne
@@ -35,6 +37,17 @@ class MapPinsTests(APITestCase):
         self.assertAlmostEqual(pin["lng"], 145.06)
         self.assertEqual(pin["plant"]["common_name"], "Golden Wattle")
         self.assertEqual(pin["bloom_status"], "blooming_now")
+
+    def test_local_photo_url_keeps_host(self):
+        # Regression: MEDIA_URL "/media/" once produced "http://media/..." (a "//" path reads as a host)
+        make_submission(plant=self.wattle, status="approved")
+        with override_settings(PHOTO_STORAGE="local"):
+            get_storage.cache_clear()
+            try:
+                url = self.client.get("/api/v1/map/pins", {"bbox": BBOX}).data["results"][0]["thumbnail_url"]
+            finally:
+                get_storage.cache_clear()
+        self.assertTrue(url.startswith("http://testserver/media/submissions/"), url)
 
     def test_plant_filter(self):
         a = make_submission(plant=self.wattle, status="approved")

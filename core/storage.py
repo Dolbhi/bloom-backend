@@ -68,7 +68,8 @@ class LocalStorage:
         return self.path_for(key).stat().st_size
 
     def url(self, key, request=None):
-        return _absolute(request, f"/{settings.MEDIA_URL}{key}")
+        # Django may already have turned "media/" into "/media/"; a doubled "//" would read as a host name
+        return _absolute(request, f"/{settings.MEDIA_URL.lstrip('/')}{key}")
 
 
 # --- S3-compatible backend --------------------------------------------------

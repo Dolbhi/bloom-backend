@@ -49,6 +49,10 @@ class LoginView(APIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "auth"
 
+    def get_authenticate_header(self, request):
+        # With no authentication classes DRF would turn a 401 into a 403; bad credentials must stay 401.
+        return 'Bearer realm="api"'
+
     @extend_schema(request=LoginSerializer, responses={200: AuthResponseSerializer}, tags=["auth"])
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
