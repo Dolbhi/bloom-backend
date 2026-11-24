@@ -2,11 +2,13 @@
 # (No make on Windows? Copy the command after the colon-line into your terminal.)
 DC = docker compose
 RUN = $(DC) run --rm api
+# Same, but connected to Supabase (needs SUPABASE_DATABASE_URL in .env). For one-off admin tasks only.
+SUPA = $(DC) run --rm -e DATABASE_TARGET=supabase api
 
-.PHONY: help up down build logs migrate migrations test seed shell dbshell superuser reset
+.PHONY: help up down build logs migrate migrations test seed shell dbshell superuser reset checkdb supabase-check supabase-superuser
 
 help:          ## List commands
-	@grep -E '^[a-z]+:.*##' Makefile | sed 's/:.*##/\t/'
+	@grep -E '^[a-z-]+:.*##' Makefile | sed 's/:.*##/\t/'
 
 up:            ## Start db + api (http://localhost:8000)
 	$(DC) up --build
@@ -44,3 +46,12 @@ superuser:     ## Create an admin login for /admin/
 reset:         ## Wipe the local database and uploaded photos
 	$(DC) down -v
 	rm -rf media
+
+checkdb:       ## Check the local database (extensions, migrations, RLS)
+	$(RUN) python manage.py check_db
+
+supabase-check: ## Check the Supabase database (read-only)
+	$(SUPA) python manage.py check_db
+
+supabase-superuser: ## Create an admin login on Supabase (production)
+	$(SUPA) python manage.py createsuperuser

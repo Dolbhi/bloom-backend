@@ -37,6 +37,9 @@ services:
       # "db" is the service name above; Docker's network turns it into the container's address
       DATABASE_URL: postgres://bloom:bloom@db:5432/bloom
       DATABASE_SSL: "False"
+      # Pinned so a SUPABASE_DATABASE_URL in .env never switches local dev to Supabase by accident.
+      # One-off commands override it on purpose: docker compose run --rm -e DATABASE_TARGET=supabase api ...
+      DATABASE_TARGET: local
       PHOTO_STORAGE: ${PHOTO_STORAGE:-local}
       HOME: /tmp
     ports:

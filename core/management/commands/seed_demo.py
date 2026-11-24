@@ -71,6 +71,8 @@ class Command(BaseCommand):
     def handle(self, *args, **opts):
         if not settings.DEBUG and not opts["force"]:
             raise CommandError("Refusing to seed demo data with DEBUG off. Use --force if you really mean it.")
+        if settings.DATABASE_TARGET == "supabase" and not opts["force"]:
+            raise CommandError("Refusing to seed demo data into Supabase (DATABASE_TARGET=supabase). Use --force if you really mean it.")
 
         User = get_user_model()
         rng = random.Random(42)

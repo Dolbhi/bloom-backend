@@ -90,20 +90,41 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 # --- Database ---------------------------------------------------------------
-# One DATABASE_URL variable:
+# DATABASE_URL:
 #   local  -> postgres://bloom:bloom@db:5432/bloom          (set in docker-compose.yml)
 #   Render -> Supabase Session pooler string, port 5432      (set in Render env vars)
+#
+# DATABASE_TARGET=supabase (one-off commands from a laptop only) uses SUPABASE_DATABASE_URL instead,
+# always with SSL. docker-compose.yml pins DATABASE_TARGET=local, so only an explicit
+# `docker compose run -e DATABASE_TARGET=supabase ...` reaches Supabase. See 06-local-dev.md.
 # engine= forces the PostGIS backend whatever the URL's scheme says.
+
+DATABASE_TARGET = os.environ.get("DATABASE_TARGET", "local")
+if DATABASE_TARGET == "supabase":
+    if not os.environ.get("SUPABASE_DATABASE_URL"):
+        from django.core.exceptions import ImproperlyConfigured
+        raise ImproperlyConfigured("DATABASE_TARGET=supabase needs SUPABASE_DATABASE_URL in your .env")
+    _db_url_env, _db_ssl = "SUPABASE_DATABASE_URL", True
+elif DATABASE_TARGET == "local":
+    _db_url_env, _db_ssl = "DATABASE_URL", os.environ.get("DATABASE_SSL", str(not DEBUG)) == "True"
+else:
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured("DATABASE_TARGET must be 'local' or 'supabase'")
 
 DATABASES = {
     "default": dj_database_url.config(
-        env="DATABASE_URL",
+        env=_db_url_env,
         engine="django.contrib.gis.db.backends.postgis",
         conn_max_age=600,           # reuse connections for 10 min instead of reconnecting per request
         conn_health_checks=True,    # drop a reused connection if the pooler closed it
-        ssl_require=os.environ.get("DATABASE_SSL", str(not DEBUG)) == "True",
+        ssl_require=_db_ssl,
     )
 }
+
+# Supabase exposes every table in "public" through its own Data API. The app doesn't use that API,
+# so after each migrate core/db.py turns on Row Level Security (no policies = API sees nothing).
+# Django connects as the table owner, which RLS doesn't restrict.
+DATABASE_ENABLE_RLS = os.environ.get("DATABASE_ENABLE_RLS", "True") == "True"
 
 # Only needed when running outside Docker and GeoDjango can't find GDAL/GEOS on its own
 if os.environ.get("GDAL_LIBRARY_PATH"):
