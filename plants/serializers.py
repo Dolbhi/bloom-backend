@@ -11,6 +11,12 @@ class PlantSearchSerializer(serializers.ModelSerializer):
         fields = ["id", "common_name", "scientific_name", "status"]
 
 
+class PlantListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Plant
+        fields = ["id", "common_name", "scientific_name", "description"]
+
+
 class PlantEditCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlantEdit

@@ -21,7 +21,7 @@ from submissions.serializers import GallerySubmissionSerializer
 
 from .models import Plant
 from .prediction import predict_for_plant, predict_nearby, public
-from .serializers import PlantEditCreateSerializer, PlantSearchSerializer
+from .serializers import PlantEditCreateSerializer, PlantListSerializer, PlantSearchSerializer
 
 SEARCH_LIMIT = 10
 MIN_SIMILARITY = 0.3
@@ -65,6 +65,17 @@ class PlantSearchView(APIView):
             .order_by("approved_first", "-similarity", "common_name")[:SEARCH_LIMIT]
         )
         return Response(PlantSearchSerializer(plants, many=True).data)
+
+
+class PlantListView(APIView):
+    """List approved plants for the public catalogue."""
+
+    permission_classes = [AllowAny]
+
+    @extend_schema(responses=PlantListSerializer(many=True), tags=["plants"])
+    def get(self, request):
+        plants = Plant.objects.filter(status=PlantStatus.APPROVED)
+        return Response(PlantListSerializer(plants, many=True).data)
 
 
 class PlantDetailView(APIView):

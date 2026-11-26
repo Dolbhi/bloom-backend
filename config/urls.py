@@ -6,7 +6,7 @@ from django.urls import include, path, re_path
 from django.views.static import serve
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
-from plants.views import CalendarView
+from plants.views import CalendarView, PlantListView
 from submissions.views import SubmissionCreateView
 
 admin.site.site_header = "Bloom admin"
@@ -38,6 +38,7 @@ def local_media(request, path):
 api_v1 = [
     path("auth/", include("users.urls_auth")),
     path("users/", include("users.urls")),
+    path("plants", PlantListView.as_view(), name="plants-list"),
     path("plants/", include("plants.urls")),
     path("map/", include("submissions.urls_map")),
     path("calendar", CalendarView.as_view(), name="calendar"),

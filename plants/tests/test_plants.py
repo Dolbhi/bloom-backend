@@ -7,6 +7,34 @@ from core.tests.factories import make_moderator, make_plant, make_submission, ma
 from plants.models import PlantEdit
 
 
+class PlantListTests(APITestCase):
+    def test_lists_approved_plants_in_model_order(self):
+        second = make_plant("Silver Wattle", "Acacia dealbata", description="Silver flowers")
+        first = make_plant("Golden Wattle", "Acacia pycnantha", description="Golden flowers")
+        make_plant("Pending plant", status="pending")
+
+        res = self.client.get("/api/v1/plants")
+
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(
+            res.data,
+            [
+                {
+                    "id": first.id,
+                    "common_name": "Golden Wattle",
+                    "scientific_name": "Acacia pycnantha",
+                    "description": "Golden flowers",
+                },
+                {
+                    "id": second.id,
+                    "common_name": "Silver Wattle",
+                    "scientific_name": "Acacia dealbata",
+                    "description": "Silver flowers",
+                },
+            ],
+        )
+
+
 class SearchTests(APITestCase):
     def setUp(self):
         self.golden = make_plant("Golden Wattle", "Acacia pycnantha")
